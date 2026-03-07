@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Products</h1>
+<form class="filters" method="get">
+    <input type="text" name="q" placeholder="Search products or brands" value="{{ filters.q }}" />
+    <select name="category">
+        <option value="">All Categories</option>
+        {% for c in categories %}
+            <option value="{{ c.name }}" {% if filters.category == c.name %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+    </select>
+    <input type="number" name="min_price" step="0.01" placeholder="Min price" value="{{ filters.min_price }}" />
+    <input type="number" name="max_price" step="0.01" placeholder="Max price" value="{{ filters.max_price }}" />
+    <button class="btn" type="submit">Filter</button>
+</form>
+
+<div class="grid">
+    {% for p in products %}
+        <article class="card">
+            <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy" onerror="this.onerror=null;this.src='{{ url_for(&#39;static&#39;, filename=&#39;images/product-placeholder.svg&#39;) }}';" />
+            <h3>{{ p.name }}</h3>
+            <p>{{ p.brand }} | {{ p.category }}</p>
+            <p>Stock: {{ p.stock }}</p>
+            <div class="row">
+                <strong>INR {{ "%.2f"|format(p.price) }}</strong>
+                <a href="{{ url_for('store.product_detail', product_id=p.id) }}">View</a>
+            </div>
+        </article>
+    {% else %}
+        <p>No products found.</p>
+    {% endfor %}
+</div>
+{% endblock %}

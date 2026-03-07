@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Checkout</h1>
+
+<div class="checkout-grid">
+    <section class="checkout-card">
+        <h2>Order Summary</h2>
+        {% for item in items %}
+            <div class="row checkout-line">
+                <div>
+                    <strong>{{ item.name }}</strong>
+                    <p class="muted">{{ item.brand }} | Qty: {{ item.quantity }}</p>
+                </div>
+                <span>INR {{ "%.2f"|format(item.line_total) }}</span>
+            </div>
+        {% endfor %}
+        <hr />
+        <div class="row">
+            <strong>Total</strong>
+            <strong>INR {{ "%.2f"|format(subtotal) }}</strong>
+        </div>
+    </section>
+
+    <section class="checkout-card">
+        <h2>Payment</h2>
+        <p>Secure payment via Razorpay or choose Cash on Delivery.</p>
+        <p><strong>Name:</strong> {{ user_name }}</p>
+        <p><strong>Email:</strong> {{ user_email }}</p>
+
+        <form id="verify-form" method="post" action="{{ url_for('checkout.verify_payment') }}">
+            <input type="hidden" name="razorpay_order_id" id="razorpay_order_id" value="{{ razorpay_order_id }}" />
+            <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id" />
+            <input type="hidden" name="razorpay_signature" id="razorpay_signature" />
+        </form>
+
+        <button id="rzp-button" class="btn full">Pay INR {{ "%.2f"|format(subtotal) }}</button>
+
+        <form method="post" action="{{ url_for('checkout.cod_checkout') }}" class="top-gap">
+            <button class="btn secondary full" type="submit">Place Order - Cash on Delivery</button>
+        </form>
+    </section>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    const options = {
+        key: {{ razorpay_key|tojson }},
+        amount: {{ amount_paise }},
+        currency: "INR",
+        name: "Shop Max",
+        description: "Order Payment",
+        order_id: {{ razorpay_order_id|tojson }},
+        handler: function (response) {
+            document.getElementById("razorpay_order_id").value = response.razorpay_order_id;
+            document.getElementById("razorpay_payment_id").value = response.razorpay_payment_id;
+            document.getElementById("razorpay_signature").value = response.razorpay_signature;
+            document.getElementById("verify-form").submit();
+        },
+        prefill: {
+            name: {{ user_name|tojson }},
+            email: {{ user_email|tojson }}
+        },
+        theme: {
+            color: "#d62828"
+        }
+    };
+
+    const razorpay = new Razorpay(options);
+    document.getElementById("rzp-button").addEventListener("click", function (event) {
+        razorpay.open();
+        event.preventDefault();
+    });
+</script>
+{% endblock %}

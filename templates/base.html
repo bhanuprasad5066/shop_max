@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shop Max</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-inner">
+            <a href="{{ url_for('store.home') }}" class="logo">SHOP MAX</a>
+            <nav>
+                <a href="{{ url_for('store.home') }}">Home</a>
+                <a href="{{ url_for('store.products') }}">Products</a>
+                <a href="{{ url_for('cart.view_cart') }}">Cart</a>
+                {% if session.get('user_id') %}
+                    <a href="{{ url_for('checkout.orders') }}">Orders</a>
+                    {% if session.get('is_admin') %}
+                        <a href="{{ url_for('store.admin_products') }}">Admin</a>
+                    {% endif %}
+                    <span class="welcome">Hi, {{ session.get('user_name') }}</span>
+                    <a href="{{ url_for('auth.logout') }}">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}">Login</a>
+                    <a href="{{ url_for('auth.register') }}">Register</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alerts">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>Shop Max | AI-based E-commerce Resume Project</p>
+    </footer>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

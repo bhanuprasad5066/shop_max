@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Order #{{ order.id }}</h1>
+<p class="muted">Placed on {{ order.created_at }}</p>
+<p>Status: <strong>{{ order.status }}</strong></p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Brand</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.brand }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>INR {{ "%.2f"|format(item.unit_price) }}</td>
+                <td>INR {{ "%.2f"|format(item.quantity * item.unit_price) }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="row cart-actions">
+    <h2>Total: INR {{ "%.2f"|format(order.total_amount) }}</h2>
+    <div class="order-actions-inline">
+        <a class="btn" href="{{ url_for('checkout.download_invoice', order_id=order.id) }}">Download Invoice (PDF)</a>
+        {% if order.status in cancellable_statuses %}
+            <form method="post" action="{{ url_for('checkout.cancel_order', order_id=order.id) }}">
+                <input type="hidden" name="next" value="{{ url_for('checkout.order_detail', order_id=order.id) }}" />
+                <button class="btn secondary" type="submit">Cancel Order</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Admin Product Management</h1>
+
+<form class="admin-form" method="post">
+    <input type="text" name="name" placeholder="Product Name" required />
+    <input type="text" name="brand" placeholder="Brand" required />
+    <textarea name="description" placeholder="Description"></textarea>
+    <input type="number" name="price" step="0.01" placeholder="Price" required />
+    <input type="number" name="stock" placeholder="Stock" required />
+    <select name="category_id" required>
+        {% for c in categories %}
+            <option value="{{ c.id }}">{{ c.name }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" name="image_url" placeholder="Image URL" />
+    <button class="btn" type="submit">Add Product</button>
+</form>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Brand</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Stock</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in products %}
+            <tr>
+                <td>{{ p.name }}</td>
+                <td>{{ p.brand }}</td>
+                <td>{{ p.category }}</td>
+                <td>INR {{ "%.2f"|format(p.price) }}</td>
+                <td>{{ p.stock }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

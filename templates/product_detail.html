@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="product-detail">
+    <img id="product-img" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy" />
+    <div>
+        <h1>{{ product.name }}</h1>
+        <p class="muted">{{ product.brand }} | {{ product.category }}</p>
+        <p>{{ product.description }}</p>
+        <h2>INR {{ "%.2f"|format(product.price) }}</h2>
+        <p>Available stock: {{ product.stock }}</p>
+        <a class="btn" href="{{ url_for('cart.add_to_cart', product_id=product.id) }}">Add to Cart</a>
+    </div>
+</section>
+<script>
+document.getElementById('product-img').onerror = function() {
+    this.src = "{{ url_for('static', filename='images/product-placeholder.svg') }}";
+};
+</script>
+{% endblock %}

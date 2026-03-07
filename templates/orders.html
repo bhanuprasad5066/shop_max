@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>My Orders</h1>
+
+<div class="orders-list">
+    {% for order in orders %}
+        <article class="order-card">
+            <div>
+                <h3>Order #{{ order.id }}</h3>
+                <p class="muted">{{ order.created_at }}</p>
+                <p>Status: <strong>{{ order.status }}</strong></p>
+                <p>Items: {{ order.item_count }}</p>
+            </div>
+            <div class="order-actions">
+                <h3>INR {{ "%.2f"|format(order.total_amount) }}</h3>
+                <a class="btn" href="{{ url_for('checkout.order_detail', order_id=order.id) }}">View Details</a>
+                {% if order.status in cancellable_statuses %}
+                    <form method="post" action="{{ url_for('checkout.cancel_order', order_id=order.id) }}">
+                        <input type="hidden" name="next" value="{{ url_for('checkout.orders') }}" />
+                        <button class="btn secondary" type="submit">Cancel Order</button>
+                    </form>
+                {% endif %}
+            </div>
+        </article>
+    {% else %}
+        <p>No orders yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

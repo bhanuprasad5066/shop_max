@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+    <h1>Style Meets Intelligence</h1>
+    <p>Shop Max is an AI-inspired e-commerce demo inspired by modern fashion marketplaces.</p>
+    <a class="btn" href="{{ url_for('store.products') }}">Explore Collection</a>
+</section>
+
+<section>
+    <h2>Featured Products</h2>
+    <div class="grid">
+        {% for p in products %}
+            <article class="card">
+                <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy" onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/product-placeholder.svg') }}';" />
+                <h3>{{ p.name }}</h3>
+                <p>{{ p.brand }} | {{ p.category }}</p>
+                <div class="row">
+                    <strong>INR {{ "%.2f"|format(p.price) }}</strong>
+                    <a href="{{ url_for('store.product_detail', product_id=p.id) }}">View</a>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
