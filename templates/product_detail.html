@@ -11,6 +11,26 @@
         <a class="btn" href="{{ url_for('cart.add_to_cart', product_id=product.id) }}">Add to Cart</a>
     </div>
 </section>
+
+{% if ai_suggestions %}
+<section class="suggestions top-gap">
+    <h2>AI Suggestions Based on Your Visits</h2>
+    <div class="grid">
+        {% for p in ai_suggestions %}
+        <article class="card">
+            <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy" onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/product-placeholder.svg') }}';" />
+            <h3>{{ p.name }}</h3>
+            <p>{{ p.brand }} | {{ p.category }}</p>
+            <div class="row">
+                <strong>INR {{ "%.2f"|format(p.price) }}</strong>
+                <a href="{{ url_for('store.product_detail', product_id=p.id) }}">View</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
 <script>
 document.getElementById('product-img').onerror = function() {
     this.src = "{{ url_for('static', filename='images/product-placeholder.svg') }}";
