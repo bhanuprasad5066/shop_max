@@ -18,7 +18,7 @@
     <div class="grid">
         {% for p in ai_suggestions %}
         <article class="card">
-            <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy" onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/product-placeholder.svg') }}';" />
+            <img class="suggestion-img" src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy" />
             <h3>{{ p.name }}</h3>
             <p>{{ p.brand }} | {{ p.category }}</p>
             <div class="row">
@@ -32,8 +32,14 @@
 {% endif %}
 
 <script>
+const placeholderSrc = "{{ url_for('static', filename='images/product-placeholder.svg') }}";
 document.getElementById('product-img').onerror = function() {
-    this.src = "{{ url_for('static', filename='images/product-placeholder.svg') }}";
+    this.src = placeholderSrc;
 };
+document.querySelectorAll('.suggestion-img').forEach(img => {
+    img.onerror = function() {
+        this.src = placeholderSrc;
+    };
+});
 </script>
 {% endblock %}
