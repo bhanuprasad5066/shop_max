@@ -4,6 +4,7 @@ import re
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from .db import execute, query_all, query_one
+from .extensions import cache
 from .utils import admin_required
 
 store_bp = Blueprint("store", __name__)
@@ -91,7 +92,9 @@ def _get_ai_suggestions(limit=6, exclude_product_id=None):
         """
         SELECT id, brand, category_id
         FROM products
-        WHERE id IN (""" + ",".join(["%s"] * len(history)) + ")",
+        WHERE id IN ("""
+        + ",".join(["%s"] * len(history))
+        + ")",
         tuple(history),
     )
     if not viewed_rows:
@@ -140,10 +143,58 @@ def _get_ai_suggestions(limit=6, exclude_product_id=None):
     return results
 
 
+def _serialize_product(row):
+    product = {
+        "id": int(row["id"]),
+        "name": row["name"],
+        "brand": row.get("brand", ""),
+        "price": float(row["price"]),
+        "image_url": row.get("image_url") or "",
+        "category": row.get("category", ""),
+    }
+    if "stock" in row:
+        product["stock"] = int(row["stock"])
+    if "description" in row:
+        product["description"] = row.get("description") or ""
+    return product
+
+
+def _serialize_products(rows):
+    return [_serialize_product(row) for row in rows]
+
+
+def _storefront_routes():
+    products_url = url_for("store.products")
+    cart_url = url_for("cart.view_cart").rstrip("/")
+    return {
+        "home": url_for("store.home"),
+        "products": products_url,
+        "products_image_search": url_for("store.products_image_search"),
+        "product_detail_template": products_url.rstrip("/") + "/__PRODUCT_ID__",
+        "cart_add_template": cart_url + "/add/__PRODUCT_ID__",
+    }
+
+
+def _render_storefront(view, payload):
+    return render_template(
+        "storefront_react.html",
+        storefront_data={
+            "view": view,
+            "payload": payload,
+            "routes": _storefront_routes(),
+            "assets": {
+                "placeholder_image": url_for("static", filename="images/product-placeholder.svg"),
+            },
+        },
+    )
+
+
 @store_bp.route("/")
+@cache.cached(timeout=120)
 def home():
-    featured = query_all(
-        """
+    featured = _serialize_products(
+        query_all(
+            """
         SELECT p.id, p.name, p.brand, p.price, p.image_url, c.name AS category
         FROM products p
         JOIN categories c ON c.id = p.category_id
@@ -151,11 +202,13 @@ def home():
         ORDER BY p.created_at DESC
         LIMIT 8
         """
+        )
     )
-    return render_template("index.html", products=featured)
+    return _render_storefront("home", {"products": featured})
 
 
 @store_bp.route("/products")
+@cache.cached(timeout=120, query_string=True)
 def products():
     search = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
@@ -163,21 +216,23 @@ def products():
     max_price = request.args.get("max_price", "").strip()
 
     sql, params = _build_products_query(search, category, min_price, max_price)
-    items = query_all(sql, params)
-    categories = query_all("SELECT name FROM categories ORDER BY name ASC")
+    items = _serialize_products(query_all(sql, params))
+    categories = [row["name"] for row in query_all("SELECT name FROM categories ORDER BY name ASC")]
 
-    return render_template(
-        "products.html",
-        products=items,
-        categories=categories,
-        filters={
-            "q": search,
-            "category": category,
-            "min_price": min_price,
-            "max_price": max_price,
+    return _render_storefront(
+        "products",
+        {
+            "products": items,
+            "categories": categories,
+            "filters": {
+                "q": search,
+                "category": category,
+                "min_price": min_price,
+                "max_price": max_price,
+            },
+            "ai_suggestions": _serialize_products(_get_ai_suggestions(limit=6)),
+            "image_search_used": False,
         },
-        ai_suggestions=_get_ai_suggestions(limit=6),
-        image_search_used=False,
     )
 
 
@@ -212,25 +267,28 @@ def products_image_search():
         + ") ORDER BY p.created_at DESC"
     )
 
-    items = query_all(sql, tuple(params))
-    categories = query_all("SELECT name FROM categories ORDER BY name ASC")
+    items = _serialize_products(query_all(sql, tuple(params)))
+    categories = [row["name"] for row in query_all("SELECT name FROM categories ORDER BY name ASC")]
 
     flash(
         "Image search used keywords: " + ", ".join(keywords[:4]),
         "info",
     )
 
-    return render_template(
-        "products.html",
-        products=items,
-        categories=categories,
-        filters={"q": " ".join(keywords[:4]), "category": "", "min_price": "", "max_price": ""},
-        ai_suggestions=_get_ai_suggestions(limit=6),
-        image_search_used=True,
+    return _render_storefront(
+        "products",
+        {
+            "products": items,
+            "categories": categories,
+            "filters": {"q": " ".join(keywords[:4]), "category": "", "min_price": "", "max_price": ""},
+            "ai_suggestions": _serialize_products(_get_ai_suggestions(limit=6)),
+            "image_search_used": True,
+        },
     )
 
 
 @store_bp.route("/products/<int:product_id>")
+@cache.cached(timeout=180)
 def product_detail(product_id):
     item = query_one(
         """
@@ -249,7 +307,13 @@ def product_detail(product_id):
     _record_product_view(product_id)
     suggestions = _get_ai_suggestions(limit=4, exclude_product_id=product_id)
 
-    return render_template("product_detail.html", product=item, ai_suggestions=suggestions)
+    return _render_storefront(
+        "product_detail",
+        {
+            "product": _serialize_product(item),
+            "ai_suggestions": _serialize_products(suggestions),
+        },
+    )
 
 
 @store_bp.route("/admin/products", methods=["GET", "POST"])
@@ -275,6 +339,7 @@ def admin_products():
             """,
             (name, brand, description, price, stock, category_id, image_url),
         )
+        cache.clear()
         flash("Product added.", "success")
         return redirect(url_for("store.admin_products"))
 

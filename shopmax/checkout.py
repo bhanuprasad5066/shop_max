@@ -17,6 +17,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 from .db import get_db, query_all, query_one
+from .extensions import cache
+from .tasks import process_post_order
 from .utils import login_required
 
 try:
@@ -31,6 +33,27 @@ CANCELLABLE_STATUSES = {"PAID", "COD_PENDING", "PLACED"}
 
 def _to_decimal(value):
     return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _invalidate_catalog_cache():
+    try:
+        cache.clear()
+    except Exception:
+        current_app.logger.warning("Cache invalidation failed", exc_info=True)
+
+
+def _enqueue_post_order_task(order_id):
+    user = query_one("SELECT email FROM users WHERE id = %s", (session["user_id"],))
+    user_email = user["email"] if user else ""
+
+    try:
+        process_post_order.delay(order_id, session["user_id"], user_email)
+    except Exception:
+        current_app.logger.warning(
+            "Unable to enqueue post-order task for order_id=%s",
+            order_id,
+            exc_info=True,
+        )
 
 
 def _get_checkout_cart():
@@ -119,6 +142,7 @@ def _place_order_from_snapshot(snapshot, order_status):
             )
 
         conn.commit()
+        _invalidate_catalog_cache()
         return order_id
     except Exception:
         conn.rollback()
@@ -128,6 +152,7 @@ def _place_order_from_snapshot(snapshot, order_status):
 
 
 def _complete_order_flow(order_id, success_message):
+    _enqueue_post_order_task(order_id)
     session["cart"] = {}
     session.pop("checkout_snapshot", None)
     session.modified = True
@@ -347,6 +372,7 @@ def cancel_order(order_id):
 
         cursor.execute("UPDATE orders SET status = %s WHERE id = %s", ("CANCELLED", order_id))
         conn.commit()
+        _invalidate_catalog_cache()
         flash("Order cancelled successfully.", "success")
     except Exception:
         conn.rollback()
